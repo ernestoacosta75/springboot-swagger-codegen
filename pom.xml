@@ -17,7 +17,7 @@
 	<properties>
 		<java.version>1.8</java.version>
 		<io.swagger.version>1.5.12</io.swagger.version>
-		<swagger-codegen-version>2.2.1</swagger-codegen-version>
+		<swagger-codegen-version>2.2.2</swagger-codegen-version>
 		<javax.servlet.api.version>2.5</javax.servlet.api.version>
 		<frontend-maven-plugin.install-node-and-yarn.execution.phase>generate-resources</frontend-maven-plugin.install-node-and-yarn.execution.phase>
 		<frontend-maven-plugin.run-yarn-install.execution.phase>generate-resources</frontend-maven-plugin.run-yarn-install.execution.phase>

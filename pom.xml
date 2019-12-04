@@ -16,6 +16,18 @@
 
 	<properties>
 		<java.version>1.8</java.version>
+		<io.swagger.version>1.5.12</io.swagger.version>
+		<swagger-codegen-version>2.2.1</swagger-codegen-version>
+		<javax.servlet.api.version>2.5</javax.servlet.api.version>
+		<frontend-maven-plugin.install-node-and-yarn.execution.phase>generate-resources</frontend-maven-plugin.install-node-and-yarn.execution.phase>
+		<frontend-maven-plugin.run-yarn-install.execution.phase>generate-resources</frontend-maven-plugin.run-yarn-install.execution.phase>
+		<frontend-maven-plugin.run-yarn-build.execution.phase>compile</frontend-maven-plugin.run-yarn-build.execution.phase>
+		<frontend-maven-plugin.install-node-and-npm.execution.phase>none</frontend-maven-plugin.install-node-and-npm.execution.phase>
+		<frontend-maven-plugin.run-npm-install.execution.phase>none</frontend-maven-plugin.run-npm-install.execution.phase>
+		<frontend-maven-plugin.run-npm-build.execution.phase>none</frontend-maven-plugin.run-npm-build.execution.phase>
+		<frontend-maven-plugin.installDirectory></frontend-maven-plugin.installDirectory>
+		<npm.build.script>build</npm.build.script>
+		<npm.install.args>--no-optional --network-timeout 600000</npm.install.args>
 	</properties>
 
 	<dependencies>
@@ -35,17 +47,29 @@
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>servlet-api</artifactId>
+			<version>${javax.servlet.api.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>io.swagger</groupId>
+			<artifactId>swagger-core</artifactId>
+			<version>${io.swagger.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.swagger</groupId>
+			<artifactId>swagger-jersey-jaxrs</artifactId>
+			<version>${io.swagger.version}</version>
+		</dependency>
+
 		<dependency>
 			<groupId>io.springfox</groupId>
 			<artifactId>springfox-swagger2</artifactId>
@@ -68,71 +92,176 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+			<!-- generate a swagger file for each tag on the REST API -->
 			<plugin>
 				<groupId>com.github.kongchen</groupId>
 				<artifactId>swagger-maven-plugin</artifactId>
 				<version>3.1.5</version>
-				<configuration>
-					<apiSources>
-						<apiSource>
-							<springmvc>true</springmvc>
-							<locations>
-								<location>com.eara.springbootswagger.controller.LanguageController</location>
-							</locations>
-							<schemes>
-								<scheme>http</scheme>
-							</schemes>
-							<host>127.0.0.1:8080</host>
-							<basePath>/</basePath>
-							<info>
-								<title>My API</title>
-								<version>1.1.1</version>
-							</info>
-							<swaggerDirectory>${basedir}/src/main/resources/</swaggerDirectory>
-						</apiSource>
-					</apiSources>
-				</configuration>
 				<executions>
 					<execution>
+						<phase>compile</phase>
 						<goals>
 							<goal>generate</goal>
 						</goals>
 					</execution>
 				</executions>
+				<configuration>
+					<apiSources>
+						<apiSource>
+							<info>
+								<title>Swagger API Specification for Your Project</title>
+								<version>v0.28</version>
+								<description>Swagger API Specification for Your Project</description>
+							</info>
+							<locations>
+								<location>com.swathisprasad.springboot.controller</location>
+							</locations>
+							<springmvc>true</springmvc>
+							<outputFormats>json,yaml</outputFormats>
+							<swaggerDirectory>
+								${project.build.directory}/generated/swagger-api-spec
+							</swaggerDirectory>
+						</apiSource>
+					</apiSources>
+				</configuration>
 			</plugin>
-			<!-- -->
+
 			<plugin>
 				<groupId>io.swagger</groupId>
 				<artifactId>swagger-codegen-maven-plugin</artifactId>
 				<version>2.4.7</version>
 				<executions>
 					<execution>
+						<phase>compile</phase>
 						<goals>
 							<goal>generate</goal>
 						</goals>
 						<configuration>
-							<inputSpec>${basedir}/src/main/resources/swagger.json</inputSpec>
-							<language>java</language>
-							<library>resttemplate</library>
-							<output>${project.basedir}/target/swagger/</output>
+							<templateDirectory>${basedir}\templates\</templateDirectory>
 
-							<apiPackage>com.eara.springbootswagger.restclient.api</apiPackage>
-							<modelPackage>com.eara.springbootswagger.restclient.model</modelPackage>
-							<invokerPackage>com.eara.springbootswagger.restclient</invokerPackage>
+							<!-- This could be http://localhost:9080/swagger.yaml or a local file, depending on your setup -->
+							<inputSpec>${project.build.directory}/generated/swagger-api-spec/swagger.json</inputSpec>
 
-							<generateApiTests>false</generateApiTests>
-							<generateModelTests>false</generateModelTests>
-							<generateApiDocumentation>false</generateApiDocumentation>
-							<generateModelDocumentation>false</generateModelDocumentation>
-							<configOptions>
-								<dateLibrary>java8</dateLibrary>
-								<sourceFolder>restclient</sourceFolder>
-							</configOptions>
+							<language>typescript-angular</language>
+							<!--                             <language>typescript-assmal2</language> -->
+
+							<!-- This would be the directory to generate the files onto -->
+							<output>${project.basedir}/src/main/frontend/src/app/shared/swagger/</output>
+
+							<!--
+                            todo: find out how to use this, but in the TypeScriptAngular2ClientCodegen implementation it seems foreseen to publish the generated library to a repository!
+                            => easy integration with the Angular2 npm build!
+
+                            <configOptions>
+                                <npmName>@Assmal2/assmal2-rest-client-api</npmName>
+                                <npmVersion>${project.version}</npmVersion>
+                                <npmRepository></npmRepository>
+                            </configOptions>-->
+
 						</configuration>
 					</execution>
 				</executions>
+				<dependencies>
+					<dependency>
+						<groupId>io.swagger</groupId>
+						<artifactId>swagger-codegen</artifactId>
+						<version>${swagger-codegen-version}</version>
+					</dependency>
+				</dependencies>
 			</plugin>
 
+			<plugin>
+				<groupId>com.github.eirslett</groupId>
+				<artifactId>frontend-maven-plugin</artifactId>
+				<!-- Use the latest released version:
+                https://repo1.maven.org/maven2/com/github/eirslett/frontend-maven-plugin/ -->
+				<version>1.6</version>
+				<!--todo: upgrade maven to 3.1.x to be able to use the 1.1 version! But that makes other stuff fail in the build... -->
+				<executions>
+					<execution>
+						<!-- optional: you don't really need execution ids, but it looks nice in your build log. -->
+						<id>install node and yarn</id>
+						<goals>
+							<goal>install-node-and-yarn</goal>
+						</goals>
+						<phase>${frontend-maven-plugin.install-node-and-yarn.execution.phase}</phase>
+						<configuration>
+							<installDirectory>${frontend-maven-plugin.installDirectory}</installDirectory>
+						</configuration>
+					</execution>
+
+					<execution>
+						<!-- optional: you don't really need execution ids, but it looks nice in your build log. -->
+						<id>install node and npm</id>
+						<goals>
+							<goal>install-node-and-npm</goal>
+						</goals>
+						<!-- optional: default phase is "generate-resources" -->
+						<phase>${frontend-maven-plugin.install-node-and-npm.execution.phase}</phase>
+						<configuration>
+							<installDirectory>${frontend-maven-plugin.installDirectory}</installDirectory>
+						</configuration>
+					</execution>
+
+					<execution>
+						<id>yarn install</id>
+						<goals>
+							<goal>yarn</goal>
+						</goals>
+						<phase>${frontend-maven-plugin.run-yarn-install.execution.phase}</phase>
+						<!-- Optional configuration which provides for running any npm command -->
+						<configuration>
+							<installDirectory>${frontend-maven-plugin.installDirectory}</installDirectory>
+							<arguments>install ${npm.install.args}</arguments>
+						</configuration>
+					</execution>
+
+					<execution>
+						<id>npm install</id>
+						<goals>
+							<goal>npm</goal>
+						</goals>
+						<phase>${frontend-maven-plugin.run-npm-install.execution.phase}</phase>
+						<!-- Optional configuration which provides for running any npm command -->
+						<configuration>
+							<installDirectory>${frontend-maven-plugin.installDirectory}</installDirectory>
+							<arguments>install ${npm.install.args}</arguments>
+						</configuration>
+					</execution>
+
+					<execution>
+						<id>yarn run build</id>
+						<goals>
+							<goal>yarn</goal>
+						</goals>
+						<phase>${frontend-maven-plugin.run-yarn-build.execution.phase}</phase>
+						<configuration>
+							<installDirectory>${frontend-maven-plugin.installDirectory}</installDirectory>
+							<arguments>run ${npm.build.script}</arguments>
+						</configuration>
+					</execution>
+
+					<execution>
+						<id>npm run build</id>
+						<goals>
+							<goal>npm</goal>
+						</goals>
+						<phase>${frontend-maven-plugin.run-npm-build.execution.phase}</phase>
+						<configuration>
+							<installDirectory>${frontend-maven-plugin.installDirectory}</installDirectory>
+							<arguments>run ${npm.build.script}</arguments>
+						</configuration>
+					</execution>
+				</executions>
+				<configuration>
+					<nodeVersion>v8.9.4</nodeVersion>
+					<npmVersion>4.6.1</npmVersion> <!-- https://webgate.ec.europa.eu/fpfis/wikis/display/eUI/00.+Prerequisites -->
+					<yarnVersion>v1.15.2</yarnVersion>
+					<yarnInheritsProxyConfigFromMaven>false</yarnInheritsProxyConfigFromMaven>
+					<workingDirectory>src/main/frontend</workingDirectory>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
+
 </project>

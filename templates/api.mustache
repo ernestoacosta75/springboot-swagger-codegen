@@ -1,0 +1,309 @@
+
+// tslint:disable:no-unused-variable member-ordering
+// noinspection ES6UnusedImports
+
+{{#imports}}
+{{{asmImport}}}
+{{{asmImportBase}}}
+{{/imports}}
+
+import {HttpClient, HttpHeaders, HttpParams} from '@angular/common/http';
+import {ClassProvider, FactoryProvider, Inject, Injectable, InjectionToken, Optional, Provider} from '@angular/core';
+import {Actions, Effect} from '@ngrx/effects';
+import {classToPlain, plainToClass} from 'class-transformer';
+import * as moment from 'moment';
+import * as R from 'ramda';
+import {Observable} from 'rxjs/Observable';
+import {IScheduler} from 'rxjs/Scheduler';
+import {delay, map} from 'rxjs/operators';
+
+import {isValidValue, selectHeaderContentType, selectHeaderAccept, setHeader} from '../api.helper';
+import {BASE_PATH, COLLECTION_FORMATS} from '../variables';
+import {Configuration} from '../configuration';
+import {ClassType} from '../classType';
+import {createHttpEffect} from '../http.effect';
+import {createGlobalBlockerEffect} from '../global-blocker.effect';
+import {createNotificationEffect} from '../notification.effect';
+import {HttpActions} from '../http.actions';
+import {HttpActionsArgs} from '../http.model';
+import {CustomHttpUrlEncodingCodec} from '../query-encoder';
+import {Api$FactoryConfig, Api$FactoryConfig2, Api$FactoryConfig3} from '../api-factory.model';
+import {apiFactory$} from '../api-factory';
+import {argsObj} from '../../helpers/gp/args-obj';
+
+{{#operations}}
+
+export module {{classname}} {
+
+{{#description}}
+/**
+ * {{&description}}
+ */
+{{/description}}
+export abstract class Api {
+{{#operation}}
+
+   /**{{#summary}}
+    * {{.}}{{/summary}}{{#notes}}
+    * {{.}}{{/notes}}{{#vendorExtensions}}{{#params}}
+    * @param {{paramName}}{{#description}} {{.}}{{/description}}{{/params}}{{/vendorExtensions}}
+    */
+    abstract {{nickname}}{{#vendorExtensions}}{{#genericClass}}<T extends {{.}}>{{/genericClass}}{{/vendorExtensions}}({{#vendorExtensions}}{{#params}}{{paramName}}{{^required}}?{{/required}}: {{{dataType}}}{{^-last}},
+        {{/-last}}{{/params}}{{/vendorExtensions}}): Observable<{{#vendorExtensions}}{{{genericReturnType}}}{{/vendorExtensions}}>;
+{{/operation}}
+
+}
+
+{{#description}}
+/**
+ * {{&description}}
+ */
+{{/description}}
+@Injectable()
+class Service extends Api {
+    private defaultHeaders = new HttpHeaders();
+
+    constructor(private readonly httpClient: HttpClient,
+                @Inject(BASE_PATH) private readonly basePath: string,
+                @Optional() private readonly configuration: Configuration) {
+      super();
+      if (!this.configuration) {
+        this.configuration = {};
+      }
+    }
+
+{{#operation}}
+    /**{{#summary}}
+     * {{.}}{{/summary}}{{#notes}}
+     * {{.}}{{/notes}}{{#vendorExtensions}}{{#params}}
+     * @param {{paramName}}{{#description}} {{.}}{{/description}}{{/params}}{{/vendorExtensions}}
+     */
+    public {{nickname}}{{#vendorExtensions}}{{#genericClass}}<T extends {{.}}>{{/genericClass}}{{/vendorExtensions}}({{#vendorExtensions}}{{#params}}{{paramName}}{{^defaultValue}}{{^required}}?{{/required}}{{/defaultValue}}: {{{dataType}}}{{#defaultValue}} = {{{.}}}{{/defaultValue}}{{^-last}},
+            {{/-last}}{{/params}}{{/vendorExtensions}}): Observable<{{#vendorExtensions}}{{{genericReturnType}}}{{/vendorExtensions}}> {
+{{#allParams}}{{#required}}
+        {{#isConstEnumParam}}
+        let {{paramName}} = {{{dataType}}};
+        {{/isConstEnumParam}}
+        {{^isConstEnumParam}}
+        if (!isValidValue({{paramName}}{{#vendorExtensions}}{{#isNumber}}, true{{/isNumber}}{{/vendorExtensions}})) {
+            throw new Error('Required parameter {{paramName}} was null or undefined when calling {{nickname}}.');
+        }
+        {{/isConstEnumParam}}
+{{/required}}{{/allParams}}
+{{#hasQueryParams}}
+        let queryParameters = new HttpParams({encoder: new CustomHttpUrlEncodingCodec()});
+{{#queryParams}}
+{{#isListContainer}}
+        if ({{paramName}}) {
+        {{#isCollectionFormatMulti}}
+            {{paramName}}.forEach((element) => {
+                queryParameters = queryParameters.append('{{baseName}}', <any>element);
+            })
+        {{/isCollectionFormatMulti}}
+        {{^isCollectionFormatMulti}}
+            queryParameters = queryParameters.set('{{baseName}}', {{paramName}}.join(COLLECTION_FORMATS['{{collectionFormat}}']));
+        {{/isCollectionFormatMulti}}
+        }
+        {{/isListContainer}}
+        {{^isListContainer}}
+        if (isValidValue({{paramName}}{{#vendorExtensions}}{{#isNumber}}, true{{/isNumber}}{{/vendorExtensions}})) {
+            queryParameters = queryParameters.set('{{baseName}}', {{#vendorExtensions}}{{{toString}}}{{/vendorExtensions}});
+        }
+{{/isListContainer}}
+{{/queryParams}}
+
+{{/hasQueryParams}}
+        let headers = this.defaultHeaders;
+{{#headerParams}}
+        {{#isListContainer}}
+        if ({{paramName}}) {
+            headers = headers.set('{{baseName}}', {{paramName}}.join(COLLECTION_FORMATS['{{collectionFormat}}']));
+        }
+        {{/isListContainer}}
+        {{^isListContainer}}
+        if (isValidValue({{paramName}}{{#vendorExtensions}}{{#isNumber}}, true{{/isNumber}}{{/vendorExtensions}})) {
+            headers = headers.set('{{baseName}}', String({{paramName}}));
+        }
+        {{/isListContainer}}
+{{/headerParams}}
+
+{{#authMethods}}
+        // authentication ({{name}}) required
+{{#isApiKey}}
+{{#isKeyInHeader}}
+        if (this.configuration.apiKeys["{{keyParamName}}"]) {
+            headers = headers.set('{{keyParamName}}', this.configuration.apiKeys["{{keyParamName}}"]);
+        }
+
+{{/isKeyInHeader}}
+{{#isKeyInQuery}}
+        if (this.configuration.apiKeys["{{keyParamName}}"]) {
+            queryParameters = queryParameters.set('{{keyParamName}}', this.configuration.apiKeys["{{keyParamName}}"]);
+        }
+
+{{/isKeyInQuery}}
+{{/isApiKey}}
+{{#isBasic}}
+        if (this.configuration.username || this.configuration.password) {
+            headers = headers.set('Authorization', 'Basic ' + btoa(this.configuration.username + ':' + this.configuration.password));
+        }
+
+{{/isBasic}}
+{{#isOAuth}}
+        if (this.configuration.accessToken) {
+            const accessToken = typeof this.configuration.accessToken === 'function'
+                ? this.configuration.accessToken()
+                : this.configuration.accessToken;
+            headers = headers.set('Authorization', 'Bearer ' + accessToken);
+        }
+
+{{/isOAuth}}
+{{/authMethods}}
+        headers = setHeader('Accept', selectHeaderAccept([{{#produces}}'{{{mediaType}}}'{{#hasMore}}, {{/hasMore}}{{/produces}}]), headers);
+{{#bodyParam}}
+        headers = setHeader('Content-Type', selectHeaderContentType([{{#consumes}}'{{{mediaType}}}'{{#hasMore}}, {{/hasMore}}{{/consumes}}]), headers);
+{{/bodyParam}}
+{{#hasFormParams}}
+        headers = setHeader('Content-Type', 'application/x-www-form-urlencoded', headers);
+        let formParams: { append(param: string, value: any): void; };
+        let useForm;
+        useForm = false;
+{{#formParams}}
+{{#isFile}}
+        // use FormData to transmit files using content-type "multipart/form-data"
+        // see https://stackoverflow.com/questions/4007969/application-x-www-form-urlencoded-or-multipart-form-data
+        useForm = useForm || [{{#consumes}}'{{{mediaType}}}'{{#hasMore}}, {{/hasMore}}{{/consumes}}].some((consume: string) => consume === 'multipart/form-data');
+{{/isFile}}
+{{/formParams}}
+
+        formParams = useForm ? new FormData() : new HttpParams({encoder: new CustomHttpUrlEncodingCodec()});
+
+{{#formParams}}
+{{#isListContainer}}
+        if ({{paramName}}) {
+{{#isCollectionFormatMulti}}
+            {{paramName}}.forEach((element) => {
+                formParams = formParams.append('{{baseName}}', <any>element) || formParams;
+            })
+{{/isCollectionFormatMulti}}
+{{^isCollectionFormatMulti}}
+            formParams = formParams.append('{{baseName}}', {{paramName}}.join(COLLECTION_FORMATS['{{collectionFormat}}'])) || formParams;
+{{/isCollectionFormatMulti}}
+        }
+{{/isListContainer}}{{^isListContainer}}
+        if (isValidValue({{paramName}}{{#vendorExtensions}}{{#isNumber}}, true{{/isNumber}}{{/vendorExtensions}})) {
+            formParams = formParams.append('{{baseName}}', {{#vendorExtensions}}{{{toString}}}{{/vendorExtensions}}) || formParams;
+        }
+{{/isListContainer}}
+{{/formParams}}{{/hasFormParams}}
+
+        return this.httpClient.request<{{#vendorExtensions}}{{{genericReturnType}}}{{/vendorExtensions}}>(
+          '{{httpMethod}}',
+          `${this.basePath}{{{path}}}`,
+          {
+             headers: headers,
+             observe: 'body',{{#hasQueryParams}}
+             params: queryParameters,{{/hasQueryParams}}{{#isResponseFile}}
+             responseType: "blob",{{/isResponseFile}}{{#bodyParam}}
+             body: {{paramName}} == null ? '' : classToPlain({{paramName}}, { enableCircularCheck: true }), // https://github.com/angular/angular/issues/10612{{/bodyParam}}{{#hasFormParams}}
+             body: formParams.toString(),{{/hasFormParams}}
+             reportProgress: false
+           }
+        ){{#vendorExtensions}}{{#alternativeClassType}}
+          .pipe(
+            map((data: {{#vendorExtensions}}{{{genericReturnType}}}{{/vendorExtensions}}) => !!cType ? plainToClass(cType, data) : data)
+          ){{/alternativeClassType}}{{/vendorExtensions}};
+    }
+
+{{/operation}}}
+
+export const provider: Provider = <ClassProvider> {
+    provide: Api,
+    useClass: Service
+};
+
+{{#operation}}
+export module {{nickname}} {
+
+    // noinspection TsLint
+    export interface Type extends HttpActionsArgs {
+{{#allParams}}        {{paramName}}{{^required}}?{{/required}}: {{{dataType}}};
+{{/allParams}}
+    }
+
+{{#vendorExtensions}}{{#alternativeClassType}}    export const returnType = new InjectionToken('I{{classname}}.{{nickname}}.returnType');{{/alternativeClassType}}{{/vendorExtensions}}
+
+    export const actions = new HttpActions<Type, {{#vendorExtensions}}{{{returnType}}}{{/vendorExtensions}}>('I{{classname}}.{{nickname}}');
+
+    @Injectable()
+    export class ApiEffect{{#vendorExtensions}}{{#genericClass}}<V extends {{{.}}}>{{/genericClass}}{{/vendorExtensions}} {
+
+      @Effect() effect;
+      constructor(private api: Api,
+                  private actions$: Actions{{#vendorExtensions}}{{#alternativeClassType}},
+                  @Optional() @Inject(returnType) private c: ClassType<V>{{/alternativeClassType}}{{/vendorExtensions}}) {
+
+        this.effect = Observable.merge(
+          // http action
+          createHttpEffect(actions$,
+            actions,
+            (args: Type) => {
+                const data: any = Object.assign({}, args{{#vendorExtensions}}{{#alternativeClassType}}, {c: c}{{/alternativeClassType}}{{/vendorExtensions}});
+
+                return api.{{nickname}}({{#vendorExtensions}}{{#params}}data.{{paramName}}{{^-last}},
+                    {{/-last}}{{/params}}{{/vendorExtensions}});
+                }),
+          // notification actions
+          createNotificationEffect(actions$, actions),
+          // global blocker actions
+          createGlobalBlockerEffect(actions$, actions)
+        );
+      }
+    }
+
+{{#vendorExtensions}}{{#apiFactory}}
+export const api$FactoryToken = new InjectionToken('{{nickname}}-api$Factory-token');
+
+export type Api$FactoryType = <I{{#genericClass}} extends {{.}}{{/genericClass}}, O>(config: Api$FactoryConfig2<{{{genericInputType}}}, {{{genericOutputType}}}>) => ({{#params}}
+    {{paramName}}$: Observable<{{{dataType}}}>{{^-last}},{{/-last}}{{/params}}) => Observable<{{{genericOutputType}}}>;
+
+export const api$Factory2 = <I{{#genericClass}} extends {{.}}{{/genericClass}}, O>(api: Api) => (config: Api$FactoryConfig2<{{{genericInputType}}}, {{{genericOutputType}}}>) => api$Factory(R.assoc('api', api, config));
+
+export const api$FactoryProvider = <FactoryProvider>{
+    provide: api$FactoryToken,
+    deps: [Api],
+    useFactory: api$Factory2
+};
+
+export const api$Factory = <I{{#genericClass}} extends {{.}}{{/genericClass}}, O>(config: Api$FactoryConfig<{{{genericInputType}}}, {{{genericOutputType}}}, Api>, scheduler?: IScheduler) => ({{#params}}
+        {{paramName}}$: Observable<{{{dataType}}}>{{^-last}},{{/-last}}{{/params}}): Observable<{{{genericOutputType}}}> => {
+
+  const params$: Observable<Type> = Observable{{#hasParams}}
+    .combineLatest(
+  {{#params}}  {{paramName}}$,
+  {{/params}}
+     argsObj<Type>([{{#params}}'{{paramName}}'{{^-last}}, {{/-last}}{{/params}}])){{/hasParams}}{{^hasParams}}.of({}).pipe(delay(0, scheduler)){{/hasParams}};
+
+  const apiFn = (t: Type) => config.api.{{nickname}}({{#params}}t.{{paramName}}{{^-last}}, {{/-last}}{{/params}});
+
+  const isValidParameterFn  = ({{#hasParams}}t: Type{{/hasParams}}) =>{{^params}} true{{/params}}{{#params}}
+    t.{{paramName}} !== void 0{{#required}} && isValidValue(t.{{paramName}}{{#numeric}}, true{{/numeric}}){{/required}}{{^-last}} &&{{/-last}}{{/params}};
+
+  const api$FactoryConfig = R.pipe(
+    R.set(R.lensPath(['id']), '{{classname}}.{{nickname}}'),
+    R.set(R.lensPath(['params$']), params$),
+    R.set(R.lensPath(['isValidParameterFn']), isValidParameterFn),
+    R.set(R.lensPath(['apiFn']), apiFn),
+    R.dissocPath(['api'])
+  )(config) as Api$FactoryConfig3<Type, {{{genericInputType}}}, {{{genericOutputType}}}>;
+
+  return apiFactory$(api$FactoryConfig, scheduler);
+  };
+{{/apiFactory}}{{/vendorExtensions}}
+
+}
+
+{{/operation}}
+
+{{/operations}}
+}

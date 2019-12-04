@@ -1,7 +1,7 @@
-package com.eara.springbootswagger.controller;
+package com.swathisprasad.springboot.controller;
 
-import com.eara.springbootswagger.entity.Language;
-import com.eara.springbootswagger.repository.LanguageRepository;
+import com.swathisprasad.springboot.dao.entity.Language;
+import com.swathisprasad.springboot.dao.repository.ILanguageRepository;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
@@ -17,12 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@Api(value="Language API", description="Operations pertaining to Language")
+@Api(value="Language API", tags="language")
 @RequestMapping("/api")
 public class LanguageController {
 
     @Autowired
-    LanguageRepository languageRepository;
+    ILanguageRepository languageRepository;
 
     @ApiOperation(value = "View a list of available languages", response = Iterable.class)
     @ApiResponses(value = {

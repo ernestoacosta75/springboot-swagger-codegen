@@ -1,7 +1,7 @@
-package com.eara.springbootswagger.boot;
+package com.swathisprasad.springboot;
 
-import com.eara.springbootswagger.entity.Language;
-import com.eara.springbootswagger.repository.LanguageRepository;
+import com.swathisprasad.springboot.dao.entity.Language;
+import com.swathisprasad.springboot.dao.repository.ILanguageRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,10 +9,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class DataInitializer {
+
     private final Logger logger = LoggerFactory.getLogger(DataInitializer.class);
 
     @Autowired
-    LanguageRepository languageRepository;
+    ILanguageRepository languageRepository;
 
     public void initData() {
 

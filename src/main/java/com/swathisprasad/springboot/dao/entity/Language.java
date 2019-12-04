@@ -1,12 +1,10 @@
-package com.eara.springbootswagger.entity;
-
-import io.swagger.annotations.ApiModel;
+package com.swathisprasad.springboot.dao.entity;
 
 import javax.persistence.*;
 
-@ApiModel
 @Entity
 public class Language {
+
     @Id
     @Column(name = "ID", nullable = false)
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -49,4 +47,3 @@ public class Language {
         return true;
     }
 }
-

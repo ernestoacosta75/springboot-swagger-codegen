@@ -1,0 +1,47 @@
+import {HttpHeaders} from '@angular/common/http';
+
+/**
+ * Select the correct content-type to use for a request.
+ * Uses {@link Configuration#isJsonMime} to determine the correct content-type.
+ * If no content type is found return the first found type if the contentTypes is not empty
+ * @param contentTypes - the array of content types that are available for selection
+ * @returns the selected content-type or <code>undefined</code> if no selection could be made.
+ */
+export function selectHeaderContentType(contentTypes: string[]): string | undefined {
+  return contentTypes && (contentTypes.find(x => isJsonMime(x)) || contentTypes[0]);
+}
+
+/**
+ * Select the correct accept content-type to use for a request.
+ * Uses {@link Configuration#isJsonMime} to determine the correct accept content-type.
+ * If no content type is found return the first found type if the contentTypes is not empty
+ * @param accepts - the array of content types that are available for selection.
+ * @returns the selected content-type or <code>undefined</code> if no selection could be made.
+ */
+export function selectHeaderAccept(accepts: string[]): string | undefined {
+  return accepts && (accepts.find(x => isJsonMime(x)) || accepts[0]);
+}
+
+export function isValidValue(value: any, nanCheck: boolean = false): boolean {
+  return value !== void 0 && value !== null && (!nanCheck || !isNaN(value));
+}
+
+export function setHeader(header: string, value: string, headers: HttpHeaders): HttpHeaders {
+  return (headers && header && value && headers.set(header, value)) || headers;
+}
+
+const jsonMime: RegExp = new RegExp('^(application\/json|[^;/ \t]+\/[^;/ \t]+[+]json)[ \t]*(;.*)?$', 'i');
+
+/**
+ * Check if the given MIME is a JSON MIME.
+ * JSON MIME examples:
+ *   application/json
+ *   application/json; charset=UTF8
+ *   APPLICATION/JSON
+ *   application/vnd.company+json
+ * @param mime - MIME (Multipurpose Internet Mail Extensions)
+ * @return True if the given MIME is JSON, false otherwise.
+ */
+export function isJsonMime(mime: string): boolean {
+  return mime && (jsonMime.test(mime) || mime.toLowerCase() === 'application/json-patch+json');
+}
